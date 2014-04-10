@@ -1,0 +1,14 @@
+CFLAGS=/MD
+
+all: csvcut.exe samplecsv.exe
+
+.obj.exe:
+	link $<
+
+csvcut.exe: csvcut.obj
+
+csvsample.exe: csvsample.obj
+	link -out:$@ $**
+
+
+
