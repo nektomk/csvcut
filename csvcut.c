@@ -335,22 +335,38 @@ test_rsi() {
 int print_table_cut2(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	RSI irow,icol;
 	int row,col;
-	int is_first_row,is_first_col;
+	int is_first_col;
 	char *text;
-	is_first_row=1;
+	int rowspan=0;	// пропущенно пустых строк
 	/// по всем выбранным строкам
 	for(rsi_first(&irow,&row,rowset,tab->height);!rsi_end(&irow,&row);rsi_next(&irow,&row)) {
-		if (is_first_row) is_first_row=!is_first_row;
-		else putchar('\n');
+		int colspan=0;	// пропущенно пустых ячеек
 		is_first_col=1;
 		/// по всем выбранным столбцам
 		for(rsi_first(&icol,&col,colset,tab->width);!rsi_end(&icol,&col);rsi_next(&icol,&col)) {
-			if (is_first_col) is_first_col=!is_first_col;
-			else putchar(',');
 			text=tab->row[row]->text[col];
-			if (text!=NULL) printf("%s",text);
+			if (text && text[0]) {
+				//if (is_first_row) is_first_row=!is_first_row;
+				//else putchar('\n');
+				for(;rowspan>0;rowspan--) {
+					printf(";\n");
+				}
+				if (is_first_col) is_first_col=!is_first_col;
+				else putchar(',');
+				for(;colspan>0;colspan--) {
+					printf(",");
+				}
+				printf("%s",text);
+			} else {
+				colspan++;
+			}
 		}
+		if (is_first_col) rowspan++;
+		else putchar('\n');
 	}
+//	for(;rowspan>0;rowspan--) {
+//		printf(";\n");
+//	}
 	return 0;
 }
 int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
@@ -372,6 +388,7 @@ int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 			/* перебор колонок */
 			Range *colrange;
 			int firstcolumn;
+			int colspan=0;	// пропущенно пустых ячеек
 			firstcolumn=1;
 
 			if (firstrow) firstrow=!firstrow;
@@ -386,12 +403,17 @@ int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 				first_in_range(&cnum,colrange->d1,colrange->d2);
 				do {
 					char *text;
-
-					if (firstcolumn) firstcolumn=!firstcolumn;
-					else putchar(',');
-
 					text=table_cell(tab,rnum,cnum);
-					if (text && text[0]) printf("%s",text);
+					if (text && text[0]) {
+						if (firstcolumn) firstcolumn=!firstcolumn;
+						else putchar(',');
+						for(;colspan>0;colspan--) {
+							printf("\"\",");
+						}
+						printf("--%s",text);
+					} else {
+						colspan++;
+					}
 					//else printf("\"\"\"\"");
 				} while(next_in_range(&cnum,colrange->d1,colrange->d2));
 			}
