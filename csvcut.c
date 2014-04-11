@@ -221,6 +221,138 @@ first_in_range(int *p,int d1,int d2) {
 	*p=d1;
 	return 1;
 }
+
+/** а-ля итератор индексов по RangeSet */
+typedef struct RSI {
+	RangeSet *rs;	// набор
+	int	range_num;	// номер диапазона в наборе
+	int num;		// номер внутри диапазона
+	int width;
+} RSI;
+
+int rsi_first(RSI *rsi,int *p,RangeSet *rs,int width); // перейти к первому в наборе
+int rsi_next(RSI *rsi,int *p);		// перейти к след. *p в наборе
+int rsi_end(RSI *rsi,int *p);		// =1 если *p вне набора
+
+#ifndef min
+#define min(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef max
+#define max(x,y) ((x)>(y)?(x):(y))
+#endif
+
+int rsi_end(RSI *rsi,int *p) {
+	int d1,d2;
+	if (rsi==NULL || p==NULL) return 1;
+	if (rsi->rs==NULL) return 1;
+	if (rsi->range_num<0 || rsi->range_num>=rsi->rs->len) return 1;
+	d1=rsi->rs->range[rsi->range_num]->d1;
+	d2=rsi->rs->range[rsi->range_num]->d2;
+	if (d1<0) d1+=rsi->width;
+	if (d2<0) d2+=rsi->width;
+	if (*p<min(d1,d2) || *p>max(d1,d2)) return 1;
+	return 0;
+}
+int rsi_first(RSI *rsi,int *p,RangeSet *rs,int width) {
+	int d1;
+	if (rsi==NULL) return 0;
+	if (rsi->rs==NULL && rs==NULL) return 0;
+	if (rs!=NULL) {
+		rsi->rs=rs;
+		rsi->range_num=0;
+		rsi->num=0;
+		rsi->width=width;
+	} else {
+		rsi->range_num=0;
+		rsi->num=0;
+	}
+	d1=rsi->rs->range[rsi->range_num]->d1;
+	if (d1<0)d1+=rsi->width;
+	if (p) *p=d1;
+	return 1;
+}
+int rsi_next(RSI *rsi,int *p) {
+	Range *range;
+	int i,d1,d2;
+	i=*p;
+	if (rsi==NULL || p==NULL) return 0;	// неправильные параметры
+	if (rsi->rs==NULL || rsi->width<=0) {	// неинициализованный или неправильный rsi
+		return 0;
+	}
+	if (rsi->range_num<0 || rsi->range_num>=rsi->rs->len) {
+		return 0;
+	}
+	range=rsi->rs->range[rsi->range_num];
+	d1=range->d1;
+	d2=range->d2;
+	if (d1<0) d1+=rsi->width;	// отрицательные индексы отн.конца
+	if (d2<0) d2+=rsi->width;
+
+	// сдвинуть i в нужную сторону внутри диапазона
+	if (d1<d2) i++;
+	else i--;
+	// i вышел за диапазон - перейти к следующему
+	if (i<min(d1,d2) || i>max(d1,d2)) {
+		rsi->range_num++;
+		if (rsi->range_num>=rsi->rs->len) {
+			// достигнут конец набора
+			return 0;
+		}
+		range=rsi->rs->range[rsi->range_num];
+		i=range->d1;
+		if (i<0) i+=rsi->width;
+	}
+	if (p) *p=i;
+	return 1;
+}
+static void
+test_rsi() {
+	char *test[]={
+		"1..5 5..1 -2..2",
+		NULL
+	};
+	int t;
+	RangeSet *rs;
+	RSI rsi;
+	char *s;
+	int i;
+	for(t=0;test[t];t++) {
+		s=test[t];
+		printf("parse_rangeset %s\n",s);
+		rs=parse_rangeset(NULL,s,&s);
+		if (!rs) {
+			fprintf(stderr,"error parse_rangeset %s\n",s);
+		}
+		print_rangeset(rs);
+		putchar('\n');
+		printf("on width=10\n");
+		for(rsi_first(&rsi,&i,rs,10);!rsi_end(&rsi,&i);rsi_next(&rsi,&i)) {
+			printf("%d ",i);
+		}
+		putchar('\n');
+	}
+}
+int print_table_cut2(Table *tab,RangeSet *colset,RangeSet *rowset) {
+	RSI irow,icol;
+	int row,col;
+	int is_first_row,is_first_col;
+	char *text;
+	is_first_row=1;
+	/// по всем выбранным строкам
+	for(rsi_first(&irow,&row,rowset,tab->height);!rsi_end(&irow,&row);rsi_next(&irow,&row)) {
+		if (is_first_row) is_first_row=!is_first_row;
+		else putchar('\n');
+		is_first_col=1;
+		/// по всем выбранным столбцам
+		for(rsi_first(&icol,&col,colset,tab->width);!rsi_end(&icol,&col);rsi_next(&icol,&col)) {
+			if (is_first_col) is_first_col=!is_first_col;
+			else putchar(',');
+			text=tab->row[row]->text[col];
+			if (text!=NULL) printf("%s",text);
+		}
+	}
+	return 0;
+}
 int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	Range *rowrange;
 	int rowrange_num;
@@ -301,7 +433,7 @@ print_range(Range *r) {
 	if (r==NULL) printf("null");
 	else printf("%ld..%ld/%d",r->d1,r->d2,r->every);
 }
-static void
+void
 print_rangeset(RangeSet *rs) {
 	if (rs==NULL) printf("null");
 	else if (rs->len==0) printf("empty");
@@ -401,7 +533,7 @@ row_parse(Row *r,char *s,char **saveptr) {
 					// открылась кавычка
 					mode=*p;
 				}
-			} 
+			}
 			if (mode==0) {
 				if (*p==',' || *p==';') break;
 				if (*p=='\r' && *(p+1)=='\n') p++;
@@ -625,7 +757,7 @@ main(int argc,char *argv[]) {
 	printf("select rows:");
 	print_rangeset(rowset);
 	putchar('\n');
-*/	
-	print_table_cut(tab,colset,rowset);
+*/
+	print_table_cut2(tab,colset,rowset);
 	return 0;
 }
