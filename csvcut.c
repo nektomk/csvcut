@@ -3,9 +3,8 @@
 #include <stdlib.h>
 
 #include "csv.h"
-
-#define SPACES " \t\v\f\r\n"
-#define BLANK " \t\v\f"
+#include "ranges.h"
+#include "parse.h"
 /*
 #define SEE(format,...) do { \
 	fprintf(stderr,"%s:%d %s : ",__FILE__,__LINE__,__PRETTY_FUNCTION__); \
@@ -13,70 +12,6 @@
 	fputc('\n',stderr); \
 } while(0)
 */
-Range FULLRANGE={0,-1,0};
-Range *
-new_range(Index d1,Index d2) {
-	Range *r;
-	r=calloc(sizeof(Range),1);
-	if (!r) return NULL;
-	r->d1=d1;
-	r->d2=d2;
-	return r;
-}
-Range *
-set_range(Range *r,Index d1,Index d2,int every) {
-	if (r==NULL)
-		r=malloc(sizeof(Range));
-	if (!r) return NULL;
-	r->d1=d1;
-	r->d2=d2;
-	r->every=every;
-	return r;
-}
-
-RangeSet *
-new_rangeset() {
-	RangeSet *rs;
-	rs=malloc(sizeof(RangeSet));
-	if (rs==NULL) return NULL;
-	memset(rs,0,sizeof(RangeSet));
-	return rs;
-}
-RangeSet *
-rangeset_add_range(RangeSet *rs,Range *r) {
-	if (!rs) rs=new_rangeset();
-	if (rs->len==rs->sz) {
-		// нужно увеличить длину буфера
-		Range **tmp;
-		int newsz;
-		newsz=rs->sz+32;
-		tmp=calloc(sizeof(Range *),newsz);
-		if (!tmp) return NULL;
-		if (rs->range) {
-			memcpy(tmp,rs->range,sizeof(Range *)*rs->len);
-			free(rs->range);
-		}
-		rs->range=tmp;
-		rs->sz=newsz;
-	}
-	rs->range[rs->len++]=r;
-	return rs;
-}
-RangeSet *
-rangeset_add(RangeSet *rs,Index d1,Index d2) {
-	return rangeset_add_range(rs,new_range(d1,d2));
-}
-void
-rangeset_clear(RangeSet *rs) {
-	if (!rs) return;
-	if (rs->range) {
-		int t;
-		for(t=0;t<rs->len;t++)
-			if (rs->range[t]) free(rs->range[t]);
-		free(rs->range);
-	}
-	memset(rs,0,sizeof(RangeSet));
-}
 /** объеденить аргументы в строку через ' '
 */
 char *
@@ -161,178 +96,8 @@ parse_index(char **ps,Index *pnum) {
 	if (pnum) *pnum=negate?-num:num;
 	return 1;
 }
-/** считать определение диапазона из строки и сохранить в pfrom pto
-	вернуть размер полученного диапазона
-	допустимые варианты:
-		1 : диапазон из единственного значения {1 1}
-		1..2 или 1.30 : диапазон из двух значений {1 30}
-		..2  4..      : диапазон от первой ячейки {1..2} до последней ячейки {4..-1}
-*/
-Range *
-parse_range(Range *r,char *s,char **saveptr) {
-	Index d1,d2;
-	int every;
-	every=1;
-	s+=strspn(s,SPACES);
-	if (!parse_index(&s,&d1)) d1=-1;	// считываем первый номер
-	if (*s=='.') {
-		// диапазон задан двумя числами
-		s+=strspn(s,".");
-		if (!parse_index(&s,&d2)) d2=-1;	// считываем второй номер
-	} else {
-		d2=d1;
-	}
-	if (saveptr) *saveptr=s;
-	return set_range(r,d1,d2,every);
-}
 
-RangeSet *
-parse_rangeset(RangeSet *rs,char *s,char **saveptr) {
-	Range *r;
-	if (rs==NULL)rs=new_rangeset();
-	r=NULL;
-	while(*s && (r=parse_range(NULL,s,&s))!=NULL) {
-		rangeset_add_range(rs,r);
-		r=NULL;
-		s+=strspn(s,SPACES);
-		if (*s==':') break;
-	}
-	if (saveptr) *saveptr=s;
-	return rs;
-}
-static int
-next_in_range(int *p,int d1,int d2) {
-	int i;
-	if (!p) return 0;
-	i=*p;
-	if (i==d2) return 0;
-	if (d1<d2) {
-		i++;
-	} else if (d1>d2) {
-		i--;
-	}
-	//if (i<0) exit(1);
-	*p=i;
-	return 1;
-}
-static int
-first_in_range(int *p,int d1,int d2) {
-	if (!p) return 0;
-	*p=d1;
-	return 1;
-}
-
-/** а-ля итератор индексов по RangeSet */
-typedef struct RSI {
-	RangeSet *rs;	// набор
-	int	range_num;	// номер диапазона в наборе
-	int num;		// номер внутри диапазона
-	int width;
-} RSI;
-
-int rsi_first(RSI *rsi,int *p,RangeSet *rs,int width); // перейти к первому в наборе
-int rsi_next(RSI *rsi,int *p);		// перейти к след. *p в наборе
-int rsi_end(RSI *rsi,int *p);		// =1 если *p вне набора
-
-#ifndef min
-#define min(x,y) ((x)<(y)?(x):(y))
-#endif
-#ifndef max
-#define max(x,y) ((x)>(y)?(x):(y))
-#endif
-
-int rsi_end(RSI *rsi,int *p) {
-	int d1,d2;
-	if (rsi==NULL || p==NULL) return 1;
-	if (rsi->rs==NULL) return 1;
-	if (rsi->range_num<0 || rsi->range_num>=rsi->rs->len) return 1;
-	d1=rsi->rs->range[rsi->range_num]->d1;
-	d2=rsi->rs->range[rsi->range_num]->d2;
-	if (d1<0) d1+=rsi->width;
-	if (d2<0) d2+=rsi->width;
-	if (*p<min(d1,d2) || *p>max(d1,d2)) return 1;
-	return 0;
-}
-int rsi_first(RSI *rsi,int *p,RangeSet *rs,int width) {
-	int d1;
-	if (rsi==NULL) return 0;
-	if (rsi->rs==NULL && rs==NULL) return 0;
-	if (rs!=NULL) {
-		rsi->rs=rs;
-		rsi->range_num=0;
-		rsi->num=0;
-		rsi->width=width;
-	} else {
-		rsi->range_num=0;
-		rsi->num=0;
-	}
-	d1=rsi->rs->range[rsi->range_num]->d1;
-	if (d1<0)d1+=rsi->width;
-	if (p) *p=d1;
-	return 1;
-}
-int rsi_next(RSI *rsi,int *p) {
-	Range *range;
-	int i,d1,d2;
-	i=*p;
-	if (rsi==NULL || p==NULL) return 0;	// неправильные параметры
-	if (rsi->rs==NULL || rsi->width<=0) {	// неинициализованный или неправильный rsi
-		return 0;
-	}
-	if (rsi->range_num<0 || rsi->range_num>=rsi->rs->len) {
-		return 0;
-	}
-	range=rsi->rs->range[rsi->range_num];
-	d1=range->d1;
-	d2=range->d2;
-	if (d1<0) d1+=rsi->width;	// отрицательные индексы отн.конца
-	if (d2<0) d2+=rsi->width;
-
-	// сдвинуть i в нужную сторону внутри диапазона
-	if (d1<d2) i++;
-	else i--;
-	// i вышел за диапазон - перейти к следующему
-	if (i<min(d1,d2) || i>max(d1,d2)) {
-		rsi->range_num++;
-		if (rsi->range_num>=rsi->rs->len) {
-			// достигнут конец набора
-			return 0;
-		}
-		range=rsi->rs->range[rsi->range_num];
-		i=range->d1;
-		if (i<0) i+=rsi->width;
-	}
-	if (p) *p=i;
-	return 1;
-}
-static void
-test_rsi() {
-	char *test[]={
-		"1..5 5..1 -2..2",
-		NULL
-	};
-	int t;
-	RangeSet *rs;
-	RSI rsi;
-	char *s;
-	int i;
-	for(t=0;test[t];t++) {
-		s=test[t];
-		printf("parse_rangeset %s\n",s);
-		rs=parse_rangeset(NULL,s,&s);
-		if (!rs) {
-			fprintf(stderr,"error parse_rangeset %s\n",s);
-		}
-		print_rangeset(rs);
-		putchar('\n');
-		printf("on width=10\n");
-		for(rsi_first(&rsi,&i,rs,10);!rsi_end(&rsi,&i);rsi_next(&rsi,&i)) {
-			printf("%d ",i);
-		}
-		putchar('\n');
-	}
-}
-int print_table_cut2(Table *tab,RangeSet *colset,RangeSet *rowset) {
+int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	RSI irow,icol;
 	int row,col;
 	int is_first_col;
@@ -351,11 +116,11 @@ int print_table_cut2(Table *tab,RangeSet *colset,RangeSet *rowset) {
 				for(;rowspan>0;rowspan--) {
 					printf(";\n");
 				}
-				if (is_first_col) is_first_col=!is_first_col;
-				else putchar(',');
 				for(;colspan>0;colspan--) {
 					printf(",");
 				}
+				if (is_first_col) is_first_col=!is_first_col;
+				else putchar(',');
 				printf("%s",text);
 			} else {
 				colspan++;
@@ -369,127 +134,7 @@ int print_table_cut2(Table *tab,RangeSet *colset,RangeSet *rowset) {
 //	}
 	return 0;
 }
-int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
-	Range *rowrange;
-	int rowrange_num;
-	int colrange_num;
-	int firstrow;
-	if (tab==NULL || tab->height==0 || tab->width==0) return 0;
-	firstrow=1;
-	/* перебор строк */
-	for(rowrange_num=0;rowrange_num<rowset->len;rowrange_num++) {
-		int rnum;
-		rowrange=rowset->range[rowrange_num];
-		if (rowrange==NULL) rowrange=&FULLRANGE;// bug: potential segfault
-		if (rowrange->d1<0) rowrange->d1=tab->height+rowrange->d1;
-		if (rowrange->d2<0) rowrange->d2=tab->height+rowrange->d2;
-		first_in_range(&rnum,rowrange->d1,rowrange->d2);
-		do {
-			/* перебор колонок */
-			Range *colrange;
-			int firstcolumn;
-			int colspan=0;	// пропущенно пустых ячеек
-			firstcolumn=1;
 
-			if (firstrow) firstrow=!firstrow;
-			else putchar('\n');
-
-			for(colrange_num=0;colrange_num<colset->len;colrange_num++) {
-				int cnum;
-				colrange=colset->range[colrange_num];
-				if (colrange==NULL) colrange=&FULLRANGE;// bug: potential segfault
-				if (colrange->d1<0) colrange->d1=tab->width+colrange->d1;
-				if (colrange->d2<0) colrange->d2=tab->width+colrange->d2;
-				first_in_range(&cnum,colrange->d1,colrange->d2);
-				do {
-					char *text;
-					text=table_cell(tab,rnum,cnum);
-					if (text && text[0]) {
-						if (firstcolumn) firstcolumn=!firstcolumn;
-						else putchar(',');
-						for(;colspan>0;colspan--) {
-							printf("\"\",");
-						}
-						printf("--%s",text);
-					} else {
-						colspan++;
-					}
-					//else printf("\"\"\"\"");
-				} while(next_in_range(&cnum,colrange->d1,colrange->d2));
-			}
-		} while(next_in_range(&rnum,rowrange->d1,rowrange->d2));
-	}
-	return 0;
-}
-
-static void
-test_parse_range() {
-	// todo: 1/vX..100/xxAxxA
-	static char *range[]={
-		"1",
-		"a",
-		"1.2",
-		"2..1",
-		"-2...-3",
-		".1",
-		"..2",
-		"1.",
-		"2..",
-		NULL
-	};
-	int t;
-	char *s;
-	Range r;
-	for(t=0;range[t];t++) {
-		s=range[t];
-		printf("%d check \"%s\" ",t,s);
-		if (!parse_range(&r,s,&s)) {
-			printf("fault\n");
-			continue;
-		}
-		printf("ok %ld..%ld/%d\n",r.d1,r.d2,r.every);
-	}
-}
-static void
-print_range(Range *r) {
-	if (r==NULL) printf("null");
-	else printf("%ld..%ld/%d",r->d1,r->d2,r->every);
-}
-void
-print_rangeset(RangeSet *rs) {
-	if (rs==NULL) printf("null");
-	else if (rs->len==0) printf("empty");
-	else {
-		int t;
-		for(t=0;t<rs->len;t++) {
-			print_range(rs->range[t]);
-			putchar(' ');
-		}
-	}
-}
-static void
-test_rangeset_parse() {
-	static char *test[]={
-		"1 2 3",
-		"1 2 3 : helo",
-		NULL
-	};
-	int t;
-	char *s;
-	RangeSet rs={0};
-	for(t=0;test[t];t++) {
-		s=test[t];
-		printf("%d check \"%s\" ",t,s);
-		if (!parse_rangeset(&rs,s,&s)) {
-			printf("fault\n");
-			continue;
-		}
-		printf("ok ");
-		print_rangeset(&rs);
-		putchar('\n');
-		rangeset_clear(&rs);
-	}
-}
 Row *new_row() {
 	Row *r;
 	r=malloc(sizeof(Row));
@@ -780,6 +425,6 @@ main(int argc,char *argv[]) {
 	print_rangeset(rowset);
 	putchar('\n');
 */
-	print_table_cut2(tab,colset,rowset);
+	print_table_cut(tab,colset,rowset);
 	return 0;
 }

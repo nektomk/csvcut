@@ -1,9 +1,11 @@
 TARGETS=csvcut samplecsv
+TESTS=ranges_test
+
 CFLAGS=-Wall -Wextra
 
 all: $(TARGETS)
 
-csvcut: csvcut.o
+csvcut: csvcut.o ranges.o parse.o
 
 samplecsv: samplecsv.c
 

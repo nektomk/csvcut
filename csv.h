@@ -1,6 +1,8 @@
 #ifndef CSV_H
 #define CSV_H 1
 
+#include "ranges.h"
+
 typedef struct Row {
 	char **text;
 	int sz;
@@ -31,20 +33,5 @@ Table *parse_table(Table *,char *s,char **saveptr);
 Table *table_add(Table *,Row *);
 Row *table_row(Table *,int);
 char *table_cell(Table *,int,int);
-
-typedef long Index;
-typedef struct Range {
-	Index d1;
-	Index d2;
-	int every;
-} Range;
-
-Range *new_range(Index d1,Index d2);
-Range *set_range(Range *r,Index d1,Index d2,int every);
-
-typedef struct RangeSet {
-	int sz,len;
-	Range **range;
-} RangeSet;
 
 #endif

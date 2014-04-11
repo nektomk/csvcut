@@ -5,7 +5,8 @@ all: csvcut.exe samplecsv.exe
 .obj.exe:
 	link $<
 
-csvcut.exe: csvcut.obj
+csvcut.exe: csvcut.obj ranges.obj parse.obj
+	link -out:$@ $**
 
 csvsample.exe: csvsample.obj
 	link -out:$@ $**
