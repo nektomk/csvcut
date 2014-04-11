@@ -11,7 +11,7 @@ typedef struct Range {
 
 Range *new_range(Index d1,Index d2);
 Range *set_range(Range *r,Index d1,Index d2,int every);
-Range *parse_range(Range *r,char *s,char **saveptr);
+// Range *parse_range(Range *r,char *s,char **saveptr); // moved to parse.h
 
 extern Range FULLRANGE;
 
@@ -21,7 +21,7 @@ typedef struct RangeSet {
 } RangeSet;
 
 RangeSet *new_rangeset();
-RangeSet *parse_rangeset(RangeSet *rs,char *s,char **saveptr);
+// RangeSet *parse_rangeset(RangeSet *rs,char *s,char **saveptr); // moved to parse.h
 RangeSet *rangeset_add_range(RangeSet *rs,Range *r);
 RangeSet *rangeset_add(RangeSet *rs,Index d1,Index d2);
 

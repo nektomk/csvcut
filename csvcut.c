@@ -57,45 +57,6 @@ FAULT:
 	if (ret) free(ret);
 	return NULL;
 }
-/** считать номер строки/ячейки
-*/
-int
-parse_index(char **ps,Index *pnum) {
-	char *s;
-	Index num;
-	int negate;
-	if (ps==NULL) return 0;
-	s=*ps;
-	num=0L;
-	negate=0;
-	if (*s=='-') {
-		negate=1;
-		s++;
-	}
-	if ((*s>='a' && *s<='z') || (*s>='A' && *s<='Z')) {
-		// номер задан в виде а-ля Exel
-		do {
-			if (num) num=num*('z'-'a');
-			if (*s>='a' && *s<='z') num+=*s-'a';
-			else if (*s>='A' && *s<='Z') num+=*s-'A';
-			else if (*s>='0' && *s<='9') num+=*s-'0';
-			else break;	// конец номера
-			s++;
-		} while(*s);
-	} else if (*s>='0' && *s<='9') {
-		// номер задан в десятичном виде
-		while (*s && (*s>='0' && *s<='9')) {
-			if (num) num=num*10;
-			num+=*s-'0';
-			s++;
-		}
-	} else {
-		return 0;
-	}
-	if (ps) *ps=s;
-	if (pnum) *pnum=negate?-num:num;
-	return 1;
-}
 
 int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	RSI irow,icol;
