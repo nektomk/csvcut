@@ -1,11 +1,14 @@
-TARGETS=csvcut samplecsv
+TARGETS=csvcut csvzip samplecsv
 TESTS=ranges_test parse_test
+CSVOBJS=csv.o ranges.o parse.o
 
 CFLAGS=-std=gnu99 -D_GNU_SOURCE -Wall -Wextra 
 
 all: $(TARGETS)
 
-csvcut: csvcut.o ranges.o parse.o csv.o
+csvcut: csvcut.o $(CSVOBJS)
+
+csvzip: csvzip.o $(CSVOBJS)
 
 samplecsv: samplecsv.c
 
