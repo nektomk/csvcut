@@ -2,10 +2,11 @@
 #define CSV_H 1
 
 #include "ranges.h"
+
 /** строка CSV как динамический массив строк
 */
 typedef struct Row {
-	char **text;	/// массив строк
+	char **text;	/// массив ячеек
 	int sz;			/// выделенно места (макс.число строк)
 	int len;		/// кол-во строк
 } Row;
@@ -35,4 +36,6 @@ Table *table_add(Table *,Row *);
 Row *table_row(Table *,int);
 char *table_cell(Table *,int,int);
 
+
+int print_table_cut(Table *,RangeSet *,RangeSet *);
 #endif

@@ -5,7 +5,7 @@ CFLAGS=-std=gnu99 -D_GNU_SOURCE -Wall -Wextra
 
 all: $(TARGETS)
 
-csvcut: csvcut.o ranges.o parse.o
+csvcut: csvcut.o ranges.o parse.o csv.o
 
 samplecsv: samplecsv.c
 

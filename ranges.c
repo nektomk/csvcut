@@ -47,7 +47,7 @@ set_range(Range *r,Index d1,Index d2,int every) {
 }
 
 RangeSet *
-new_rangeset() {
+new_rangeset(void) {
 	RangeSet *rs;
 	rs=malloc(sizeof(RangeSet));
 	if (rs==NULL) return NULL;
