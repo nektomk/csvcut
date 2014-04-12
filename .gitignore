@@ -24,3 +24,13 @@
 
 # csv samples
 *.csv
+
+# Code block project
+bin
+obj
+*.layout
+*.depend
+
+#doxygen docs
+
+

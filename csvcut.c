@@ -16,7 +16,7 @@
 } while(0)
 */
 
-/** объеденить аргументы в строку через ' '
+/** РѕР±СЉРµРґРµРЅРёС‚СЊ Р°СЂРіСѓРјРµРЅС‚С‹ РІ СЃС‚СЂРѕРєСѓ С‡РµСЂРµР· ' '
 */
 char *
 join_args(int quantity,char *args[]) {
@@ -24,24 +24,24 @@ join_args(int quantity,char *args[]) {
 	int sz;
 	char *ret,*s,*p;
 	int len;
-	/* выделить память под буфер
-		для начала ориентируемся на 32 байта на аргумент
+	/* РІС‹РґРµР»РёС‚СЊ РїР°РјСЏС‚СЊ РїРѕРґ Р±СѓС„РµСЂ
+		РґР»СЏ РЅР°С‡Р°Р»Р° РѕСЂРёРµРЅС‚РёСЂСѓРµРјСЃСЏ РЅР° 32 Р±Р°Р№С‚Р° РЅР° Р°СЂРіСѓРјРµРЅС‚
 	*/
 	sz=quantity*32;
 	s=ret=malloc(sz);
-	/* добавлять аргументы */
+	/* РґРѕР±Р°РІР»СЏС‚СЊ Р°СЂРіСѓРјРµРЅС‚С‹ */
 	for(t=0;t<quantity;t++) {
 		p=args[t];
-		p+=strspn(p," \t\v\f\r\n");	// пропустить лидирующие пробелы
+		p+=strspn(p," \t\v\f\r\n");	// РїСЂРѕРїСѓСЃС‚РёС‚СЊ Р»РёРґРёСЂСѓСЋС‰РёРµ РїСЂРѕР±РµР»С‹
 		if (*p==0) continue;
 		len=strlen(p);
 		if (len==0) continue;
-		if (s+len+1>ret+sz) {
-			// требуется увеличить буфер
+		if (s+len+1>=ret+sz) {
+			// С‚СЂРµР±СѓРµС‚СЃСЏ СѓРІРµР»РёС‡РёС‚СЊ Р±СѓС„РµСЂ
 			int newsz;
 			char *tmp;
-			newsz=sz+len+32;		// c некоторым запасом
-			newsz+=32-(newsz%32);	// и выравнено по размеру на 32
+			newsz=sz+len+32;		// c РЅРµРєРѕС‚РѕСЂС‹Рј Р·Р°РїР°СЃРѕРј
+			newsz+=32-(newsz%32);	// Рё РІС‹СЂР°РІРЅРµРЅРѕ РїРѕ СЂР°Р·РјРµСЂСѓ РЅР° 32
 			tmp=malloc(newsz);
 			if (tmp==NULL) goto FAULT;
 			memcpy(tmp,ret,s-ret);
@@ -67,12 +67,12 @@ int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	int row,col;
 	int is_first_col;
 	char *text;
-	int rowspan=0;	// пропущенно пустых строк
-	/// по всем выбранным строкам
+	int rowspan=0;	// РїСЂРѕРїСѓС‰РµРЅРЅРѕ РїСѓСЃС‚С‹С… СЃС‚СЂРѕРє
+	/// РїРѕ РІСЃРµРј РІС‹Р±СЂР°РЅРЅС‹Рј СЃС‚СЂРѕРєР°Рј
 	for(rsi_first(&irow,&row,rowset,tab->height);!rsi_end(&irow,&row);rsi_next(&irow,&row)) {
-		int colspan=0;	// пропущенно пустых ячеек
+		int colspan=0;	// РїСЂРѕРїСѓС‰РµРЅРЅРѕ РїСѓСЃС‚С‹С… СЏС‡РµРµРє
 		is_first_col=1;
-		/// по всем выбранным столбцам
+		/// РїРѕ РІСЃРµРј РІС‹Р±СЂР°РЅРЅС‹Рј СЃС‚РѕР»Р±С†Р°Рј
 		for(rsi_first(&icol,&col,colset,tab->width);!rsi_end(&icol,&col);rsi_next(&icol,&col)) {
 			text=tab->row[row]->text[col];
 			if (text && text[0]) {
@@ -107,7 +107,7 @@ Row *new_row(void) {
 	memset(r,0,sizeof(Row));
 	return r;
 }
-/** добавить ячейку в конец строки
+/** РґРѕР±Р°РІРёС‚СЊ СЏС‡РµР№РєСѓ РІ РєРѕРЅРµС† СЃС‚СЂРѕРєРё
 */
 Row *row_add(Row *r,char *text) {
 	if (r==NULL) r=new_row();
@@ -141,8 +141,8 @@ Row *row_clear(Row *r,void (*cb)(char *)) {
 	r->sz=0;
 	return r;
 }
-/** разобрать CSV строку
-	см RFC4180
+/** СЂР°Р·РѕР±СЂР°С‚СЊ CSV СЃС‚СЂРѕРєСѓ
+	СЃРј RFC4180
 **/
 Row *
 row_parse(Row *r,char *s,char **saveptr) {
@@ -151,18 +151,18 @@ row_parse(Row *r,char *s,char **saveptr) {
 		char *p;
 		int quote;
 		quote=0;
-		s+=strspn(s,BLANK);	// начальные пробелы игнорируются (todo: настраивается)
+		s+=strspn(s,BLANK);	// РЅР°С‡Р°Р»СЊРЅС‹Рµ РїСЂРѕР±РµР»С‹ РёРіРЅРѕСЂРёСЂСѓСЋС‚СЃСЏ (todo: РЅР°СЃС‚СЂР°РёРІР°РµС‚СЃСЏ)
 		p=s;
 		while(*p) {
 			if ((*p=='\"' || *p=='\'')) {
 				if (*p==*(p+1)) {
-					// две подряд следующие кавычки - пропускаем одну из них
+					// РґРІРµ РїРѕРґСЂСЏРґ СЃР»РµРґСѓСЋС‰РёРµ РєР°РІС‹С‡РєРё - РїСЂРѕРїСѓСЃРєР°РµРј РѕРґРЅСѓ РёР· РЅРёС…
 					p++;
 				} else if (*p==quote) {
-					// закрылась кавычка
+					// Р·Р°РєСЂС‹Р»Р°СЃСЊ РєР°РІС‹С‡РєР°
 					quote=0;
 				} else {
-					// открылась кавычка
+					// РѕС‚РєСЂС‹Р»Р°СЃСЊ РєР°РІС‹С‡РєР°
 					quote=*p;
 				}
 			}
@@ -192,7 +192,7 @@ Table *
 new_table(void) {
 	return calloc(sizeof(Table),1);
 }
-/** добавить строку в конец таблицы
+/** РґРѕР±Р°РІРёС‚СЊ СЃС‚СЂРѕРєСѓ РІ РєРѕРЅРµС† С‚Р°Р±Р»РёС†С‹
 */
 Table *
 table_add(Table *tab,Row *r) {
@@ -312,7 +312,7 @@ main(int argc,char *argv[]) {
 		rowset=parse_rangeset(NULL,s,&s);
 	}
 	if (rowset==NULL) { rowset=new_rangeset();rangeset_add_range(rowset,&FULLRANGE); }
-	// наборы получены, дальше доп.инструкции
+	// РЅР°Р±РѕСЂС‹ РїРѕР»СѓС‡РµРЅС‹, РґР°Р»СЊС€Рµ РґРѕРї.РёРЅСЃС‚СЂСѓРєС†РёРё
 /*	if (*s) {
 		char *name,*value;
 		s++;
