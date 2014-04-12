@@ -1,11 +1,14 @@
 CFLAGS=/MD /Wall
 
-all: csvcut.exe samplecsv.exe
+all: csvcut.exe csvzip.exe samplecsv.exe
 
 .obj.exe:
 	link $<
 
 csvcut.exe: csvcut.obj ranges.obj parse.obj csv.obj
+	link -out:$@ $**
+
+csvzip.exe: csvzip.obj ranges.obj parse.obj csv.obj
 	link -out:$@ $**
 
 csvsample.exe: csvsample.obj
