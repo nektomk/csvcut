@@ -1,4 +1,4 @@
-CFLAGS=/MD
+CFLAGS=/MD /Wall
 
 all: csvcut.exe samplecsv.exe
 

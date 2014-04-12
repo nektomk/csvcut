@@ -1,9 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "parse.h"
 #include "ranges.h"
+
+// режим работы задаваемый разными опци€ми
+CsvFormat csvformat={
+	.fs=",;",
+	.rs="\n",
+};
 
 /** считать номер строки/€чейки
 */
@@ -46,11 +53,11 @@ parse_index(char **ps,Index *pnum) {
 }
 
 
-/** считать определение диапазона из строки и сохранить в pfrom pto
+/** считать определение диапазона
 	вернуть размер полученного диапазона
 	допустимые варианты:
 		1 : диапазон из единственного значени€ {1 1}
-		1..2 или 1.30 : диапазон из двух значений {1 30}
+		1..2 или 1..30 : диапазон из двух значений {1 30}
 		..2  4..      : диапазон от первой €чейки {1..2} до последней €чейки {4..-1}
 */
 Range *
@@ -84,4 +91,50 @@ parse_rangeset(RangeSet *rs,char *s,char **saveptr) {
 	}
 	if (saveptr) *saveptr=s;
 	return rs;
+}
+int
+parse_name(char **pname,char *s,char **saveptr) {
+	char *p;
+	s+=strspn(s,SPACES);
+	p=s;
+	if (!s || !isalpha(*s)) return 0;
+	s++;
+	while(isalnum(*s))
+		s++;
+	*s=0;
+	s++;
+	if (pname) *pname=p;
+	if (saveptr) *saveptr=s;
+	return 1;
+}
+int parse_value(char **pvalue,char *s,char **saveptr) {
+	char *p;
+	char *value=NULL;
+	p=s;
+	s+=strcspn(s,SPACES);
+	if (p==s) return 0;
+
+	*s=0;
+	s++;
+	value=p;
+
+	if (pvalue) *pvalue=value;
+	if (saveptr) *saveptr=s;
+
+	return 1;
+}
+/* прочесть опции в виде »ћя=«Ќј„≈Ќ»≈
+*/
+int
+parse_name_value(char **pname,char **pvalue,char *s,char **saveptr) {
+	char *name=NULL,*value=NULL;
+	if (pname) name=*pname;
+	if (pvalue) value=*pvalue;
+	if (!parse_name(&name,s,&s)) return 0;
+	s+=strspn(s,SPACES);
+	if (*s=='=') parse_value(&value,s+1,&s);
+	if (pname) *pname=name;
+	if (pvalue) *pvalue=value;
+	if (saveptr) *saveptr=s;
+	return 1;
 }

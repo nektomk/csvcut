@@ -9,7 +9,7 @@ typedef struct Row {
 	int len;
 } Row;
 
-Row *new_row();
+Row *new_row(void);
 Row *row_add(Row *row,char *s);
 Row *row_parse(Row *row,char *s,char **saveptr);
 Row *row_clear(Row *row,void (*cb)(char *));
@@ -25,7 +25,7 @@ typedef struct Table {
 } Table;
 
 /* xxx_table() - constructors */
-Table *new_table();
+Table *new_table(void);
 Table *read_table(Table *,FILE *);
 Table *parse_table(Table *,char *s,char **saveptr);
 

@@ -20,7 +20,7 @@ typedef struct RangeSet {
 	Range **range;
 } RangeSet;
 
-RangeSet *new_rangeset();
+RangeSet *new_rangeset(void);
 // RangeSet *parse_rangeset(RangeSet *rs,char *s,char **saveptr); // moved to parse.h
 RangeSet *rangeset_add_range(RangeSet *rs,Range *r);
 RangeSet *rangeset_add(RangeSet *rs,Index d1,Index d2);

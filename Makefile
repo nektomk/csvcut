@@ -1,7 +1,7 @@
 TARGETS=csvcut samplecsv
-TESTS=ranges_test
+TESTS=ranges_test parse_test
 
-CFLAGS=-Wall -Wextra
+CFLAGS=-std=gnu99 -D_GNU_SOURCE -Wall -Wextra 
 
 all: $(TARGETS)
 

@@ -2,9 +2,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <string.h>
+
 #include "csv.h"
 #include "ranges.h"
 #include "parse.h"
+
 /*
 #define SEE(format,...) do { \
 	fprintf(stderr,"%s:%d %s : ",__FILE__,__LINE__,__PRETTY_FUNCTION__); \
@@ -12,7 +15,8 @@
 	fputc('\n',stderr); \
 } while(0)
 */
-/** РѕР±СЉРµРґРµРЅРёС‚СЊ Р°СЂРіСѓРјРµРЅС‚С‹ РІ СЃС‚СЂРѕРєСѓ С‡РµСЂРµР· ' '
+
+/** объеденить аргументы в строку через ' '
 */
 char *
 join_args(int quantity,char *args[]) {
@@ -20,24 +24,24 @@ join_args(int quantity,char *args[]) {
 	int sz;
 	char *ret,*s,*p;
 	int len;
-	/* РІС‹РґРµР»РёС‚СЊ РїР°РјСЏС‚СЊ РїРѕРґ Р±СѓС„РµСЂ
-		РґР»СЏ РЅР°С‡Р°Р»Р° РѕСЂРёРµРЅС‚РёСЂСѓРµРјСЃСЏ РЅР° 32 Р±Р°Р№С‚Р° РЅР° Р°СЂРіСѓРјРµРЅС‚
+	/* выделить память под буфер
+		для начала ориентируемся на 32 байта на аргумент
 	*/
 	sz=quantity*32;
 	s=ret=malloc(sz);
-	/* РґРѕР±Р°РІР»СЏС‚СЊ Р°СЂРіСѓРјРµРЅС‚С‹ */
+	/* добавлять аргументы */
 	for(t=0;t<quantity;t++) {
 		p=args[t];
-		p+=strspn(p," \t\v\f\r\n");	// РїСЂРѕРїСѓСЃС‚РёС‚СЊ Р»РёРґРёСЂСѓСЋС‰РёРµ РїСЂРѕР±РµР»С‹
+		p+=strspn(p," \t\v\f\r\n");	// пропустить лидирующие пробелы
 		if (*p==0) continue;
 		len=strlen(p);
 		if (len==0) continue;
 		if (s+len+1>ret+sz) {
-			// С‚СЂРµР±СѓРµС‚СЃСЏ СѓРІРµР»РёС‡РёС‚СЊ Р±СѓС„РµСЂ
+			// требуется увеличить буфер
 			int newsz;
 			char *tmp;
-			newsz=sz+len+32;		// c РЅРµРєРѕС‚РѕСЂС‹Рј Р·Р°РїР°СЃРѕРј
-			newsz+=32-(newsz%32);	// Рё РІС‹СЂР°РІРЅРµРЅРѕ РїРѕ СЂР°Р·РјРµСЂСѓ РЅР° 32
+			newsz=sz+len+32;		// c некоторым запасом
+			newsz+=32-(newsz%32);	// и выравнено по размеру на 32
 			tmp=malloc(newsz);
 			if (tmp==NULL) goto FAULT;
 			memcpy(tmp,ret,s-ret);
@@ -63,12 +67,12 @@ int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	int row,col;
 	int is_first_col;
 	char *text;
-	int rowspan=0;	// РїСЂРѕРїСѓС‰РµРЅРЅРѕ РїСѓСЃС‚С‹С… СЃС‚СЂРѕРє
-	/// РїРѕ РІСЃРµРј РІС‹Р±СЂР°РЅРЅС‹Рј СЃС‚СЂРѕРєР°Рј
+	int rowspan=0;	// пропущенно пустых строк
+	/// по всем выбранным строкам
 	for(rsi_first(&irow,&row,rowset,tab->height);!rsi_end(&irow,&row);rsi_next(&irow,&row)) {
-		int colspan=0;	// РїСЂРѕРїСѓС‰РµРЅРЅРѕ РїСѓСЃС‚С‹С… СЏС‡РµРµРє
+		int colspan=0;	// пропущенно пустых ячеек
 		is_first_col=1;
-		/// РїРѕ РІСЃРµРј РІС‹Р±СЂР°РЅРЅС‹Рј СЃС‚РѕР»Р±С†Р°Рј
+		/// по всем выбранным столбцам
 		for(rsi_first(&icol,&col,colset,tab->width);!rsi_end(&icol,&col);rsi_next(&icol,&col)) {
 			text=tab->row[row]->text[col];
 			if (text && text[0]) {
@@ -96,14 +100,14 @@ int print_table_cut(Table *tab,RangeSet *colset,RangeSet *rowset) {
 	return 0;
 }
 
-Row *new_row() {
+Row *new_row(void) {
 	Row *r;
 	r=malloc(sizeof(Row));
 	if (!r) return NULL;
 	memset(r,0,sizeof(Row));
 	return r;
 }
-/** РґРѕР±Р°РІРёС‚СЊ СЏС‡РµР№РєСѓ РІ РєРѕРЅРµС† СЃС‚СЂРѕРєРё
+/** добавить ячейку в конец строки
 */
 Row *row_add(Row *r,char *text) {
 	if (r==NULL) r=new_row();
@@ -137,32 +141,32 @@ Row *row_clear(Row *r,void (*cb)(char *)) {
 	r->sz=0;
 	return r;
 }
-/** СЂР°Р·РѕР±СЂР°С‚СЊ CSV СЃС‚СЂРѕРєСѓ
-	СЃРј RFC4180
+/** разобрать CSV строку
+	см RFC4180
 **/
 Row *
 row_parse(Row *r,char *s,char **saveptr) {
 	if (r==NULL) r=new_row();
 	while(*s) {
 		char *p;
-		int mode;
-		mode=0;
-		s+=strspn(s,BLANK);	// РЅР°С‡Р°Р»СЊРЅС‹Рµ РїСЂРѕР±РµР»С‹ РёРіРЅРѕСЂРёСЂСѓСЋС‚СЃСЏ (todo: РЅР°СЃС‚СЂР°РёРІР°РµС‚СЃСЏ)
+		int quote;
+		quote=0;
+		s+=strspn(s,BLANK);	// начальные пробелы игнорируются (todo: настраивается)
 		p=s;
 		while(*p) {
 			if ((*p=='\"' || *p=='\'')) {
 				if (*p==*(p+1)) {
-					// РґРІРµ РїРѕРґСЂСЏРґ СЃР»РµРґСѓСЋС‰РёРµ РєР°РІС‹С‡РєРё - РїСЂРѕРїСѓСЃРєР°РµРј РѕРґРЅСѓ РёР· РЅРёС…
+					// две подряд следующие кавычки - пропускаем одну из них
 					p++;
-				} else if (*p==mode) {
-					// Р·Р°РєСЂС‹Р»Р°СЃСЊ РєР°РІС‹С‡РєР°
-					mode=0;
+				} else if (*p==quote) {
+					// закрылась кавычка
+					quote=0;
 				} else {
-					// РѕС‚РєСЂС‹Р»Р°СЃСЊ РєР°РІС‹С‡РєР°
-					mode=*p;
+					// открылась кавычка
+					quote=*p;
 				}
 			}
-			if (mode==0) {
+			if (quote==0) {
 				if (*p==',' || *p==';') break;
 				if (*p=='\r' && *(p+1)=='\n') p++;
 				if (*p=='\n') break;
@@ -185,10 +189,10 @@ char *row_cell(Row *row,int t) {
 }
 
 Table *
-new_table() {
+new_table(void) {
 	return calloc(sizeof(Table),1);
 }
-/** РґРѕР±Р°РІРёС‚СЊ СЃС‚СЂРѕРєСѓ РІ РєРѕРЅРµС† С‚Р°Р±Р»РёС†С‹
+/** добавить строку в конец таблицы
 */
 Table *
 table_add(Table *tab,Row *r) {
@@ -284,80 +288,10 @@ void print_table(Table *tab) {
 		}
 	}
 }
+
 static void
-test_row() {
-	char *test[2]={
-		"one,two,three",
-		NULL
-	};
-	int t;
-	Row r={0};
-	char *s;
-	for(t=0;test[t];t++) {
-		s=strdup(test[t]);
-		printf("%d check \"%s\" ",t,test[t]);
-		if (!row_parse(&r,s,&s)) {
-			printf("fault");
-		} else {
-			printf("ok");
-			print_row(&r);
-		}
-		//free(p);
-		putchar('\n');
-	}
-}
-static void
-test_table() {
-	char *test[2]={
-		"one,two,three",
-		NULL
-	};
-	int t;
-	Table tab={0};
-	char *s;
-	for(t=0;test[t];t++) {
-		s=strdup(test[t]);
-		printf("%d check \"%s\" ",t,test[t]);
-		if (!parse_table(&tab,s,&s)) {
-			printf("fault");
-		} else {
-			printf("ok");
-			printf("tab.sz=%u tab.len=%u tab->row=%p",tab.sz,tab.len,tab.row);
-			print_table(&tab);
-		}
-		//free(p);
-		putchar('\n');
-	}
-}
-static void
-test_table_cut() {
-	RangeSet *colset;
-	RangeSet *rowset;
-	Table *tab;
-	FILE *f;
-	f=fopen("sample.csv","rt");
-	if (f==NULL) {
-		fprintf(stderr,"Unable to open %s\n","sample.csv");
-		return;
-	}
-	tab=read_table(NULL,f);
-	if (tab==NULL) {
-		fprintf(stderr,"Error reading table from %s\n","sample.csv");
-	}
-	printf("table %d x %d loaded\n",tab->width,tab->height);
-	colset=parse_rangeset(NULL,"4..0 7",NULL);
-	printf("select columns:");
-	print_rangeset(colset);
-	putchar('\n');
-	rowset=parse_rangeset(NULL,"0..4 1 -1",NULL);
-	printf("select rows:");
-	print_rangeset(rowset);
-	putchar('\n');
-	print_table_cut(tab,colset,rowset);
-}
-static void
-usage() {
-	printf("cut cells from cvs-formatted input\n");
+usage(void) {
+	printf("cut intersection of columns and rows from cvs-formatted input\n");
 	printf("Usage: cvscut <columns> : <rows>\n");
 	exit(EXIT_FAILURE);
 }
@@ -367,7 +301,9 @@ main(int argc,char *argv[]) {
 	Table *tab;
 	RangeSet *colset=NULL;
 	RangeSet *rowset=NULL;
+
 	if (argc==1) usage();
+
 	s=args=join_args(argc-1,argv+1);
 	colset=parse_rangeset(NULL,s,&s);
 	if (colset==NULL) { colset=new_rangeset();rangeset_add_range(colset,&FULLRANGE); }
@@ -376,8 +312,25 @@ main(int argc,char *argv[]) {
 		rowset=parse_rangeset(NULL,s,&s);
 	}
 	if (rowset==NULL) { rowset=new_rangeset();rangeset_add_range(rowset,&FULLRANGE); }
+	// наборы получены, дальше доп.инструкции
+/*	if (*s) {
+		char *name,*value;
+		s++;
+		while(*s) {
+			name=NULL;value=NULL;
+			if (parse_name_value(&name,&value,s,&s)) {
+				if (strcasecmp(name,"z") || strcasecmp(name,"zip")) {
+					csvformat.zip=1;
+				}
+			}
+		}
+	}
+*/
 	tab=read_table(NULL,stdin);
-
+	if (tab==NULL) {
+		fprintf(stderr,"error reading table\n");
+		exit(EXIT_FAILURE);
+	}
 /*	printf("table %d x %d loaded\n",tab->width,tab->height);
 	printf("select columns:");
 	print_rangeset(colset);
