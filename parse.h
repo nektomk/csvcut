@@ -7,6 +7,8 @@ typedef struct CsvFormat {
 	char *fs;	// разделитель полей	(по умолчанию ", и ;")
 	char *rs;	// разделитель записей  (по умолчанию \n или \n\r)
 	int quoting;// обрамление кавычками (по умолчанию - как есть)
+	int omit_trail_cells;	// =1 если можно опускать пустые ячейки в конце строк
+	int omit_trail_rows;	// =1 если можно опускать пустые строки в конце файла
 } CsvFormat;
 
 extern CsvFormat csvformat;

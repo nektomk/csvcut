@@ -1,6 +1,7 @@
 #ifndef CSV_H
 #define CSV_H 1
 
+#include "parse.h"
 #include "ranges.h"
 
 /** строка CSV как динамический массив строк
