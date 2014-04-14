@@ -1,4 +1,4 @@
-TARGETS=csvcut csvzip samplecsv
+TARGETS=csvcut csvzip csvpaste samplecsv
 TESTS=ranges_test parse_test
 CSVOBJS=csv.o ranges.o parse.o
 
@@ -9,6 +9,8 @@ all: $(TARGETS)
 csvcut: csvcut.o $(CSVOBJS)
 
 csvzip: csvzip.o $(CSVOBJS)
+
+csvpaste: csvpaste.o $(CSVOBJS)
 
 samplecsv: samplecsv.c
 
