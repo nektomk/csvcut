@@ -21,10 +21,12 @@ void print_colspan(int count) {
 	for(t=0;t<count;t++)
 		putchar(',');
 }
-void print_rowspan(int count) {
+void print_rowspan(int count,int width) {
 	int t;
-	for(t=0;t<count;t++)
+	for(t=0;t<count;t++) {
+		if (width>0) print_colspan(width);
 		putchar('\n');
+	}
 }
 void print_table_x(Table *tab) {
 	int t;
@@ -64,7 +66,7 @@ void print_tabs(Table **tabs,int from,int to) {
 			if (!tab) break;
 			if (row<tab->height && tab->row[row] && tab->row[row]->len) {
 				if (rowspan) {
-					print_rowspan(rowspan);
+					print_rowspan(rowspan,(csvformat.omit_trail_cells?0:totwidth));
 					rowspan=0;
 				}
 				if (firstcol) firstcol=!firstcol;
@@ -79,12 +81,13 @@ void print_tabs(Table **tabs,int from,int to) {
 				colspan+=tab->width;
 			}
 		}
-		if (colspan) print_colspan(colspan);
+		if (colspan && !csvformat.omit_trail_cells) print_colspan(colspan);
 		if (colspan==totwidth) {
 			rowspan++;
 		}
 		if (rowspan==0 && row+1<totheight) putchar('\n');
 	}
+	if (rowspan && !csvformat.omit_trail_rows) print_rowspan(rowspan,(csvformat.omit_trail_cells?0:totwidth));
 }
 
 static void
@@ -92,10 +95,13 @@ usage() {
 	printf("csvpaste [file]\n");
 	exit(EXIT_FAILURE);
 }
+
 int
 main(int argc,char **argv) {
 	int t;
 	Table **tabs;
+	csvformat.omit_trail_cells=1;
+	csvformat.omit_trail_rows=1;
 	if (argc<2) {
 		usage();
 		return 0;
