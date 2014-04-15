@@ -235,3 +235,7 @@ void print_table(Table *tab) {
 		}
 	}
 }
+void print_table_info(FILE *f,Table *tab) {
+	if (tab==NULL) printf("(null)");
+	printf("CSV table %d cols * %d rows\n",tab->width,tab->height);
+}

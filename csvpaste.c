@@ -6,6 +6,87 @@
 
 #include "csv.h"
 
+void print_row_x(Row *row) {
+	int t;
+	if (row==NULL || row->len==0) {
+		return ; //putchar('\n');
+	}
+	for(t=0;t<row->len;t++) {
+		if (t!=0) putchar(',');
+		printf("%s",row->text[t]);
+	}
+}
+void print_colspan(int count) {
+	int t;
+	for(t=0;t<count;t++)
+		putchar(',');
+}
+void print_rowspan(int count) {
+	int t;
+	for(t=0;t<count;t++)
+		putchar('\n');
+}
+void print_table_x(Table *tab) {
+	int t;
+	if (tab==NULL || tab->len==0) return;
+	for(t=0;t<tab->len;t++) {
+		if (t!=0) putchar('\n');
+		print_row_x(tab->row[t]);
+		if (tab->row[t]->len<tab->width) {
+			print_colspan(tab->width-tab->row[t]->len);
+		}
+	}
+}
+
+
+void print_tabs(Table **tabs,int from,int to) {
+	int totwidth,totheight;
+	int t;
+	int row;
+	int colspan,rowspan;
+	int firstcol;
+	Table *tab;
+	totwidth=0;
+	totheight=0;
+	for(t=from;t<=to;t++) {
+		if (!tabs[t]) continue;
+		totwidth+=tabs[t]->width;
+		if (tabs[t]->height>totheight) {
+			totheight=tabs[t]->height;
+		}
+	}
+	rowspan=0;
+	for(row=0;row<totheight;row++) {
+		colspan=0;
+		firstcol=1;
+		for(t=from;t<=to;t++) {
+			tab=tabs[t];
+			if (!tab) break;
+			if (row<tab->height && tab->row[row] && tab->row[row]->len) {
+				if (rowspan) {
+					print_rowspan(rowspan);
+					rowspan=0;
+				}
+				if (firstcol) firstcol=!firstcol;
+				else putchar(',');
+				if (colspan) {
+					print_colspan(colspan);
+					colspan=0;
+				}
+				print_row_x(tab->row[row]);
+				colspan+=tab->width-tab->row[row]->len;
+			} else {
+				colspan+=tab->width;
+			}
+		}
+		if (colspan) print_colspan(colspan);
+		if (colspan==totwidth) {
+			rowspan++;
+		}
+		if (rowspan==0 && row+1<totheight) putchar('\n');
+	}
+}
+
 static void
 usage() {
 	printf("csvpaste [file]\n");
@@ -14,42 +95,26 @@ usage() {
 int
 main(int argc,char **argv) {
 	int t;
-	Table *src,*dst;
-	Index dst_width,insert_pos;
+	Table **tabs;
 	if (argc<2) {
 		usage();
 		return 0;
 	}
-	dst=NULL;
-	if (argv[1][0]=='-' && argv[1][1]=='\0') {
-		fprintf(stderr,"from stdin\n");
-		dst=read_table(NULL,stdin);
-	} else {
-		FILE *f;
-		f=fopen(argv[1],"r");
-		if (f==NULL) {
-			fprintf(stderr,"Unable to open %s\n",argv[1]);
-			exit(EXIT_FAILURE);
+	tabs=calloc(sizeof(Table *),argc);
+	for(t=1;t<argc;t++) {
+		if (argv[t][0]=='-' && argv[t][1]=='\0') {
+			tabs[t]=read_table(NULL,stdin);
+		} else {
+			FILE *f;
+			f=fopen(argv[t],"r");
+			if (f==NULL) {
+				fprintf(stderr,"Unable to open %s\n",argv[t]);
+				exit(EXIT_FAILURE);
+			}
+			tabs[t]=read_table(NULL,f);
+			fclose(f);
 		}
-		dst=read_table(NULL,f);
-		fclose(f);
 	}
-	if (dst==NULL) {
-		fprintf(stderr,"Error reading table from %s\n",argv[1]);
-		exit(EXIT_FAILURE);
-	}
-	print_table_info(stdout,src);
-	dst_width=dst->width;
-	insert_pos=dst_width;
-	for(t=2;t<argc;t++) {
-		FILE *f;
-		f=fopen(argv[1],"r");
-		if (f==NULL) {
-			fprintf(stderr,"Unable to open %s\n",argv[1]);
-			exit(EXIT_FAILURE);
-		}
-		src=read_table(NULL,f);
-		fclose(f);
-	}
+	print_tabs(tabs,1,argc-1);
 	return 0;
 }
